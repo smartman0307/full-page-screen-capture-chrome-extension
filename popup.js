@@ -55,38 +55,26 @@ function openPage() {
     // standard dataURI can be too big, let's blob instead
     // http://code.google.com/p/chromium/issues/detail?id=69227#c27
 
-    var dataURI = screenshot.canvas.toDataURL();
+    // take apart data URL
+    var parts = screenshot.canvas.toDataURL().match(/data:([^;]*)(;base64)?,([0-9A-Za-z+/]+)/);
 
-    // convert base64 to raw binary data held in a string
-    // doesn't handle URLEncoded DataURIs
-    var byteString = atob(dataURI.split(',')[1]);
+    // assume base64 encoding
+    var binStr = atob(parts[3]);
 
-    // separate out the mime component
-    var mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
-
-    // write the bytes of the string to an ArrayBuffer
-    var ab = new ArrayBuffer(byteString.length);
-    var ia = new Uint8Array(ab);
-    for (var i = 0; i < byteString.length; i++) {
-        ia[i] = byteString.charCodeAt(i);
+    // convert to binary in ArrayBuffer
+    var buf = new ArrayBuffer(binStr.length);
+    var view = new Uint8Array(buf);
+    for (var i = 0; i < view.length; i++) {
+        view[i] = binStr.charCodeAt(i);
     }
 
-    // write the ArrayBuffer to a blob, and you're done
-    var bb = new window.WebKitBlobBuilder();
-    bb.append(ab);
+    var builder = new WebKitBlobBuilder();
+    builder.append(buf);
 
-    // create a blob for writing to a file
-    var blob = bb.getBlob(mimeString);
-    window.webkitRequestFileSystem(TEMPORARY, 1024*1024, function(fs){
-        fs.root.getFile("screenshot.png", {create:true}, function(fileEntry) {
-            fileEntry.createWriter(function(fileWriter) {
-                fileWriter.write(blob);
-            }, function() {});
-        }, function() {});
-    }, function() {});
+    // create blob with mime type, create URL for it
+    var URL = webkitURL.createObjectURL(builder.getBlob(parts[1]));
 
-    // open the file that now contains the blob
-    window.open('filesystem:chrome-extension://' + chrome.i18n.getMessage("@@extension_id") + '/temporary/screenshot.png');
+    window.open(URL);
 }
 
 // start doing stuff immediately!

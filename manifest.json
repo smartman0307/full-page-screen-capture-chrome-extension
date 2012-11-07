@@ -1,6 +1,6 @@
 {
   "name": "Full Page Screen Capture",
-  "version": "1.2",
+  "version": "1.1",
   "manifest_version": 2,
   "description": "Screen capture your current page in entirety and reliably!",
   "browser_action": {
@@ -8,9 +8,14 @@
     "default_popup": "popup.html"
   },
   "content_scripts": [{
-      "js": ["page.js"],
-      "matches": [ "http://*/*", "https://*/*", "ftp://*/*", "file://*/*" ],
-      "run_at": "document_end"
+    "js": ["page.js"],
+    "matches": [ "http://*/*", "https://*/*", "ftp://*/*", "file://*/*" ],
+    "run_at": "document_end"
    }],
-  "permissions": [ "tabs", "http://*/*", "https://*/*", "notifications" ]
+  "permissions": [ "tabs", "http://*/*", "https://*/*", "notifications" ],
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
 }
