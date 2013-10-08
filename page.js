@@ -1,7 +1,10 @@
 
 function onMessage(request, sender, callback) {
-    if (request.msg == 'scrollPage') {
+    if (request.msg === 'scrollPage') {
         getPositions(callback);
+    }
+    else {
+        console.error('Unknown message received from background: ' + request.msg);
     }
 }
 
@@ -10,13 +13,12 @@ if (!window.hasScreenCapturePage) {
     chrome.extension.onRequest.addListener(onMessage);
 }
 
-function getPositions(cb) {
+function getPositions(callback) {
     var body = document.body,
         fullWidth = document.width,
         fullHeight = document.height,
         windowWidth = window.innerWidth,
         windowHeight = window.innerHeight,
-        originalOverflowStyle = document.documentElement.style.overflow,
         arrangements = [],
         // pad the vertical scrolling to try to deal with
         // sticky headers, 250 is an arbitrary size
@@ -31,9 +33,6 @@ function getPositions(cb) {
     canvas.width = fullWidth;
     canvas.height = fullHeight;
     ctx = canvas.getContext('2d');
-    // Disable all scrollbars. We'll restore the scrollbar state when we're done
-    // taking the screenshots.
-    document.documentElement.style.overflow = 'hidden';
 
     while (yPos > -yDelta) {
         xPos = 0;
@@ -57,11 +56,8 @@ function getPositions(cb) {
 
     (function scrollTo() {
         if (!arrangements.length) {
-            document.documentElement.style.overflow = originalOverflowStyle;
             window.scrollTo(0, 0);
-            chrome.extension.sendRequest({msg: 'openPage'}, function(response) {
-            });
-            return cb && cb();
+            return callback();
         }
 
         var next = arrangements.shift(),
@@ -73,16 +69,13 @@ function getPositions(cb) {
             msg: 'capturePage',
             x: window.scrollX,
             y: window.scrollY,
-            width: windowWidth,
-            height: windowHeight,
             complete: (numArrangements-arrangements.length)/numArrangements,
             totalWidth: fullWidth,
             totalHeight: fullHeight
         };
 
-        // wait for the page to settle after scrolling before asking the
-        // background page to take a snapshot.
-        window.setTimeout(function() {
+        // need to wait for scrollbar to disappear
+        return window.setTimeout(function() {
             chrome.extension.sendRequest(data, function(response) {
                 // when there's an error in popup.js, the
                 // response is `undefined`. this can happen
@@ -91,6 +84,6 @@ function getPositions(cb) {
                     scrollTo();
                 }
             });
-        }, 100);
+        }, 1000);
     })();
 }
