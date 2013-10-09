@@ -1,10 +1,7 @@
 
 function onMessage(request, sender, callback) {
-    if (request.msg === 'scrollPage') {
+    if (request.msg == 'scrollPage') {
         getPositions(callback);
-    }
-    else {
-        console.error('Unknown message received from background: ' + request.msg);
     }
 }
 
@@ -13,7 +10,7 @@ if (!window.hasScreenCapturePage) {
     chrome.extension.onRequest.addListener(onMessage);
 }
 
-function getPositions(callback) {
+function getPositions(cb) {
     var body = document.body,
         fullWidth = document.width,
         fullHeight = document.height,
@@ -27,12 +24,7 @@ function getPositions(callback) {
         xDelta = windowWidth,
         yPos = fullHeight - yDelta + 1,
         xPos,
-        numArrangements,
-        canvas = document.createElement('canvas'),
-        ctx;
-    canvas.width = fullWidth;
-    canvas.height = fullHeight;
-    ctx = canvas.getContext('2d');
+        numArrangements;
 
     while (yPos > -yDelta) {
         xPos = 0;
@@ -57,7 +49,9 @@ function getPositions(callback) {
     (function scrollTo() {
         if (!arrangements.length) {
             window.scrollTo(0, 0);
-            return callback();
+            chrome.extension.sendRequest({msg: 'openPage'}, function(response) {
+            });
+            return cb && cb();
         }
 
         var next = arrangements.shift(),
@@ -69,6 +63,8 @@ function getPositions(callback) {
             msg: 'capturePage',
             x: window.scrollX,
             y: window.scrollY,
+            width: windowWidth,
+            height: windowHeight,
             complete: (numArrangements-arrangements.length)/numArrangements,
             totalWidth: fullWidth,
             totalHeight: fullHeight
