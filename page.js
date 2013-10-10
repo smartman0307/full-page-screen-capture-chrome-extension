@@ -18,6 +18,7 @@ function getPositions(cb) {
         windowHeight = window.innerHeight,
         originalX = window.scrollX,
         originalY = window.scrollY,
+        originalOverflowStyle = document.documentElement.style.overflow,
         arrangements = [],
         // pad the vertical scrolling to try to deal with
         // sticky headers, 250 is an arbitrary size
@@ -27,6 +28,10 @@ function getPositions(cb) {
         yPos = fullHeight - yDelta + 1,
         xPos,
         numArrangements;
+
+    // Disable all scrollbars. We'll restore the scrollbar state when we're done
+    // taking the screenshots.
+    document.documentElement.style.overflow = 'hidden';
 
     while (yPos > -yDelta) {
         xPos = 0;
@@ -48,11 +53,15 @@ function getPositions(cb) {
 
     numArrangements = arrangements.length;
 
+    function cleanUp() {
+        document.documentElement.style.overflow = originalOverflowStyle;
+        window.scrollTo(originalX, originalY);
+    }
+
     (function processArrangements() {
         if (!arrangements.length) {
-            window.scrollTo(originalX, originalY);
-            chrome.extension.sendRequest({msg: 'openPage'}, function(response) {
-            });
+            cleanUp();
+            chrome.extension.sendRequest({msg: 'openPage'}, function(response) {});
             if (cb) {
                 cb();
                 return;
@@ -75,19 +84,23 @@ function getPositions(cb) {
             totalHeight: fullHeight
         };
 
-        // need to wait for scrollbar to disappear
+        // Need to wait for things to settle
         window.setTimeout(function() {
+            // In case the below callback never returns, cleanup
+            var cleanUpTimeout = window.setTimeout(cleanUp, 750);
+
             chrome.extension.sendRequest(data, function(captured) {
+                window.clearTimeout(cleanUpTimeout);
                 if (captured) {
                     // Move on to capture next arrangement.
                     processArrangements();
                 } else {
-                    // If there's an error in popup.js, the response value is undefined.
-                    // This happens if the user clicks the page to close the popup. Return
-                    // the window to its original scroll position.
-                    window.scrollTo(originalX, originalY);
+                    // If there's an error in popup.js, the response value can be
+                    // undefined, so cleanup
+                    cleanUp();
                 }
             });
-        }, 1000);
+
+        }, 100);
     })();
 }
