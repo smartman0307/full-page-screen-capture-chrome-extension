@@ -1,7 +1,9 @@
 
 function onMessage(request, sender, callback) {
-    if (request.msg == 'scrollPage') {
+    if (request.msg === 'scrollPage') {
         getPositions(callback);
+    } else {
+        console.error('Unknown message received from background: ' + request.msg);
     }
 }
 
@@ -10,7 +12,7 @@ if (!window.hasScreenCapturePage) {
     chrome.extension.onRequest.addListener(onMessage);
 }
 
-function getPositions(cb) {
+function getPositions(callback) {
     var body = document.body,
         fullWidth = document.width,
         fullHeight = document.height,
@@ -61,11 +63,10 @@ function getPositions(cb) {
     (function processArrangements() {
         if (!arrangements.length) {
             cleanUp();
-            chrome.extension.sendRequest({msg: 'openPage'}, function(response) {});
-            if (cb) {
-                cb();
-                return;
+            if (callback) {
+                callback();
             }
+            return;
         }
 
         var next = arrangements.shift(),
@@ -77,8 +78,6 @@ function getPositions(cb) {
             msg: 'capturePage',
             x: window.scrollX,
             y: window.scrollY,
-            width: windowWidth,
-            height: windowHeight,
             complete: (numArrangements-arrangements.length)/numArrangements,
             totalWidth: fullWidth,
             totalHeight: fullHeight
