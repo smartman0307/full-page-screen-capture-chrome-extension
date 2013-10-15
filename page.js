@@ -63,6 +63,7 @@ function getPositions(callback) {
     (function processArrangements() {
         if (!arrangements.length) {
             cleanUp();
+            window.scrollTo(0, 0);
             if (callback) {
                 callback();
             }
