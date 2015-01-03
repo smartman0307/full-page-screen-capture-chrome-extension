@@ -1,4 +1,6 @@
 
+var CAPTURE_DELAY = 150;
+
 function onMessage(request, sender, callback) {
     if (request.msg === 'scrollPage') {
         getPositions(callback);
@@ -86,7 +88,6 @@ function getPositions(callback) {
     (function processArrangements() {
         if (!arrangements.length) {
             cleanUp();
-            window.scrollTo(0, 0);
             if (callback) {
                 callback();
             }
@@ -125,6 +126,6 @@ function getPositions(callback) {
                 }
             });
 
-        }, 150);
+        }, CAPTURE_DELAY);
     })();
 }
