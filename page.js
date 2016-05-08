@@ -1,20 +1,19 @@
 
 var CAPTURE_DELAY = 150;
 
-function onMessage(data, sender, callback) {
-    if (data.msg === 'scrollPage') {
+function onMessage(request, sender, callback) {
+    if (request.msg === 'scrollPage') {
         getPositions(callback);
-        return true;
-    } else if (data.msg == 'logMessage') {
-        console.log('[POPUP LOG]', data.data);
+    } else if (request.msg == 'logMessage') {
+        console.log('[POPUP LOG]', request.data);
     } else {
-        console.error('Unknown message received from background: ' + data.msg);
+        console.error('Unknown message received from background: ' + request.msg);
     }
 }
 
 if (!window.hasScreenCapturePage) {
     window.hasScreenCapturePage = true;
-    chrome.runtime.onMessage.addListener(onMessage);
+    chrome.extension.onRequest.addListener(onMessage);
 }
 
 function max(nums) {
@@ -22,8 +21,18 @@ function max(nums) {
 }
 
 function getPositions(callback) {
+
     var body = document.body,
-        widths = [
+        originalBodyOverflowYStyle = body.style.overflowY,
+        originalX = window.scrollX,
+        originalY = window.scrollY,
+        originalOverflowStyle = document.documentElement.style.overflow;
+
+    // try to make pages with bad scrolling work, e.g., ones with
+    // `body { overflow-y: scroll; }` can break `window.scrollTo`
+    body.style.overflowY = 'visible';
+
+    var widths = [
             document.documentElement.clientWidth,
             document.body.scrollWidth,
             document.documentElement.scrollWidth,
@@ -36,14 +45,15 @@ function getPositions(callback) {
             document.documentElement.scrollHeight,
             document.body.offsetHeight,
             document.documentElement.offsetHeight
+            // (Array.prototype.slice.call(document.getElementsByTagName('*'), 0)
+            //  .reduce(function(val, elt) {
+            //      var h = elt.offsetHeight; return h > val ? h : val;
+            //  }, 0))
         ],
         fullWidth = max(widths),
         fullHeight = max(heights),
         windowWidth = window.innerWidth,
         windowHeight = window.innerHeight,
-        originalX = window.scrollX,
-        originalY = window.scrollY,
-        originalOverflowStyle = document.documentElement.style.overflow,
         arrangements = [],
         // pad the vertical scrolling to try to deal with
         // sticky headers, 250 is an arbitrary size
@@ -85,6 +95,7 @@ function getPositions(callback) {
 
     function cleanUp() {
         document.documentElement.style.overflow = originalOverflowStyle;
+        document.body.style.overflowY = originalBodyOverflowYStyle;
         window.scrollTo(originalX, originalY);
     }
 
@@ -117,7 +128,7 @@ function getPositions(callback) {
             // In case the below callback never returns, cleanup
             var cleanUpTimeout = window.setTimeout(cleanUp, 1250);
 
-            chrome.runtime.sendMessage(data, function(captured) {
+            chrome.extension.sendRequest(data, function(captured) {
                 window.clearTimeout(cleanUpTimeout);
                 if (captured) {
                     // Move on to capture next arrangement.
