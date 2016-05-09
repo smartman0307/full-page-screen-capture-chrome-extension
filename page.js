@@ -1,19 +1,20 @@
 
 var CAPTURE_DELAY = 150;
 
-function onMessage(request, sender, callback) {
-    if (request.msg === 'scrollPage') {
+function onMessage(data, sender, callback) {
+    if (data.msg === 'scrollPage') {
         getPositions(callback);
-    } else if (request.msg == 'logMessage') {
-        console.log('[POPUP LOG]', request.data);
+        return true;
+    } else if (data.msg == 'logMessage') {
+        console.log('[POPUP LOG]', data.data);
     } else {
-        console.error('Unknown message received from background: ' + request.msg);
+        console.error('Unknown message received from background: ' + data.msg);
     }
 }
 
 if (!window.hasScreenCapturePage) {
     window.hasScreenCapturePage = true;
-    chrome.extension.onRequest.addListener(onMessage);
+    chrome.runtime.onMessage.addListener(onMessage);
 }
 
 function max(nums) {
@@ -23,27 +24,29 @@ function max(nums) {
 function getPositions(callback) {
 
     var body = document.body,
-        originalBodyOverflowYStyle = body.style.overflowY,
+        originalBodyOverflowYStyle = body ? body.style.overflowY : '',
         originalX = window.scrollX,
         originalY = window.scrollY,
         originalOverflowStyle = document.documentElement.style.overflow;
 
     // try to make pages with bad scrolling work, e.g., ones with
     // `body { overflow-y: scroll; }` can break `window.scrollTo`
-    body.style.overflowY = 'visible';
+    if (body) {
+        body.style.overflowY = 'visible';
+    }
 
     var widths = [
             document.documentElement.clientWidth,
-            document.body.scrollWidth,
+            body ? body.scrollWidth : 0,
             document.documentElement.scrollWidth,
-            document.body.offsetWidth,
+            body ? body.offsetWidth : 0,
             document.documentElement.offsetWidth
         ],
         heights = [
             document.documentElement.clientHeight,
-            document.body.scrollHeight,
+            body ? body.scrollHeight : 0,
             document.documentElement.scrollHeight,
-            document.body.offsetHeight,
+            body ? body.offsetHeight : 0,
             document.documentElement.offsetHeight
             // (Array.prototype.slice.call(document.getElementsByTagName('*'), 0)
             //  .reduce(function(val, elt) {
@@ -95,7 +98,9 @@ function getPositions(callback) {
 
     function cleanUp() {
         document.documentElement.style.overflow = originalOverflowStyle;
-        document.body.style.overflowY = originalBodyOverflowYStyle;
+        if (body) {
+            body.style.overflowY = originalBodyOverflowYStyle;
+        }
         window.scrollTo(originalX, originalY);
     }
 
@@ -131,7 +136,7 @@ function getPositions(callback) {
             // In case the below callback never returns, cleanup
             var cleanUpTimeout = window.setTimeout(cleanUp, 1250);
 
-            chrome.extension.sendRequest(data, function(captured) {
+            chrome.runtime.sendMessage(data, function(captured) {
                 window.clearTimeout(cleanUpTimeout);
                 // console.log('>> POPUP LOG', captured);
 
